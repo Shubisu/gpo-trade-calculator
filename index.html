@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPO Trade Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--gold:#D4AF37;--bg:#0a0a12;--bg2:#0f0f1e;--bg3:#13132a;--panel:#0d0d20;--border:#2a2a4a;--text:#e0e0f0;--muted:#7070a0;--green:#00e676;--red:#ff4444;--ss:#D4AF37;--s:#C0C0C0;--aplus:#00BFFF;--a:#FF6B35;--aminus:#7CFC00;--bplus:#FFA500;--b:#FFD700;}
+body.light{--bg:#f0f0f8;--bg2:#e4e4f0;--bg3:#d8d8ec;--panel:#ebebf5;--border:#b0b0d0;--text:#1a1a2e;--muted:#5a5a80;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;transition:background .3s,color .3s;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 20%,rgba(212,175,55,.04) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(79,195,247,.03) 0%,transparent 60%);pointer-events:none;z-index:0;}
+
+/* HEADER */
+header{position:relative;z-index:10;text-align:center;padding:20px 20px 12px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(212,175,55,.07) 0%,transparent 100%);}
+.logo{font-family:'Cinzel',serif;font-size:24px;font-weight:900;letter-spacing:4px;background:linear-gradient(135deg,#D4AF37,#FFD700,#D4AF37);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.subtitle{font-size:11px;letter-spacing:5px;color:var(--muted);text-transform:uppercase;}
+.hcontrols{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;}
+.sync-wrap{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);letter-spacing:1px;}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.sdot.ok{background:var(--green);box-shadow:0 0 5px var(--green);}
+.sdot.loading{background:var(--gold);animation:blink 1s infinite;}
+.sdot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tbtn{background:none;border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px;transition:all .2s;}
+.tbtn:hover{border-color:var(--gold);color:var(--gold);}
+.abtn{padding:5px 12px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase;border-radius:3px;}
+.abtn:hover,.abtn.on{border-color:var(--gold);color:var(--gold);}
+.abtn.on{background:rgba(212,175,55,.1);}
+
+/* NAV */
+.nav{display:flex;justify-content:center;gap:5px;padding:12px 20px 0;position:relative;z-index:10;}
+.ntab{padding:7px 20px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;clip-path:polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%);}
+.ntab:hover{border-color:var(--gold);color:var(--gold);}
+.ntab.on{background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(212,175,55,.04));border-color:var(--gold);color:var(--gold);}
+
+/* PAGES */
+.pg{display:none;padding:16px 20px;position:relative;z-index:1;}
+.pg.on{display:block;}
+
+/* TRADE */
+.arena{display:grid;grid-template-columns:1fr 130px 1fr;gap:12px;max-width:1200px;margin:0 auto;}
+.tpanel{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.tph{padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.pmy .tph{background:linear-gradient(90deg,rgba(0,230,118,.09),transparent);}
+.poth .tph{background:linear-gradient(270deg,rgba(255,68,68,.09),transparent);}
+.ptitle{font-family:'Cinzel',serif;font-size:13px;font-weight:700;letter-spacing:2px;}
+.pmy .ptitle{color:var(--green);}
+.poth .ptitle{color:var(--red);}
+.ptotal{font-size:13px;color:var(--muted);}
+.ptotal span{color:var(--gold);font-size:15px;}
+.pitems{min-height:150px;padding:9px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;}
+.chip{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:4px 8px;font-size:12px;animation:cin .15s ease;}
+@keyframes cin{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.tdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.cname{font-size:12px;}
+.cval{color:var(--gold);font-size:11px;}
+.qwrap{display:flex;align-items:center;gap:2px;}
+.qb{background:var(--bg);border:1px solid var(--border);color:var(--text);width:16px;height:16px;font-size:11px;cursor:pointer;border-radius:2px;display:flex;align-items:center;justify-content:center;}
+.qb:hover{border-color:var(--gold);color:var(--gold);}
+.qn{font-size:12px;color:var(--gold);min-width:14px;text-align:center;}
+.rmv{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;}
+.rmv:hover{color:var(--red);}
+.adda{border-top:1px solid var(--border);padding:9px;}
+.addbtn{width:100%;padding:8px;background:none;border:1px dashed var(--border);color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border-radius:3px;}
+.pmy .addbtn:hover{border-color:var(--green);color:var(--green);}
+.poth .addbtn:hover{border-color:var(--red);color:var(--red);}
+.empty{color:var(--muted);font-size:12px;padding:12px;text-align:center;letter-spacing:1px;width:100%;}
+
+/* CENTER */
+.tctr{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;}
+.vsbadge{font-family:'Cinzel',serif;font-size:18px;font-weight:900;color:var(--gold);width:44px;height:44px;border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(212,175,55,.07);}
+.vbox{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:11px 9px;text-align:center;min-width:118px;}
+.vlabel{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+.vres{font-family:'Cinzel',serif;font-size:13px;font-weight:700;margin-bottom:2px;color:var(--muted);}
+.vres.win{color:var(--green);}
+.vres.lose{color:var(--red);}
+.vres.even{color:var(--gold);}
+.vdiff{font-size:12px;color:var(--muted);}
+.rstbtn{padding:6px 12px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.rstbtn:hover{border-color:var(--red);color:var(--red);}
+
+/* MODAL */
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.moverlay.on{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:6px;width:520px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 0 50px rgba(0,0,0,.8);animation:min .2s ease;}
+@keyframes min{from{transform:scale(.95) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.mhead{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,rgba(212,175,55,.05),transparent);}
+.mtitle{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--gold);letter-spacing:2px;}
+.mclose{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;}
+.mclose:hover{color:var(--red);}
+.msearch{padding:9px 16px;border-bottom:1px solid var(--border);}
+.sinput{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:6px 10px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;}
+.sinput:focus{border-color:var(--gold);}
+.sinput::placeholder{color:var(--muted);}
+.tfilters{display:flex;gap:4px;padding:7px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.tfbtn{padding:3px 8px;border-radius:2px;border:1px solid var(--border);background:none;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s;}
+.tfbtn.on,.tfbtn:hover{border-color:currentColor;}
+.tfbtn[data-t="ALL"]{color:var(--text);}
+.tfbtn[data-t="SS"]{color:var(--ss);}
+.tfbtn[data-t="S"]{color:var(--s);}
+.tfbtn[data-t="A+"]{color:var(--aplus);}
+.tfbtn[data-t="A"]{color:var(--a);}
+.tfbtn[data-t="A-"]{color:var(--aminus);}
+.tfbtn[data-t="B+"]{color:var(--bplus);}
+.tfbtn[data-t="B"]{color:var(--b);}
+.mlist{overflow-y:auto;flex:1;padding:6px;}
+.mlist::-webkit-scrollbar{width:4px;}
+.mlist::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.irow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:3px;cursor:pointer;border:1px solid transparent;transition:background .12s;}
+.irow:hover{background:var(--bg3);border-color:var(--border);}
+.itier{font-size:10px;font-weight:700;letter-spacing:1px;min-width:24px;text-align:center;padding:2px 4px;border-radius:2px;background:rgba(255,255,255,.05);}
+.iname{flex:1;font-size:13px;}
+.isub{font-size:9px;color:var(--muted);padding:1px 4px;border:1px solid var(--border);border-radius:2px;}
+.iprice{font-size:12px;color:var(--gold);font-weight:600;}
+.iprice.unk{color:var(--muted);font-style:italic;}
+.tgh{padding:4px 10px;font-size:10px;letter-spacing:3px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-top:4px;border-bottom:1px solid var(--border);}
+
+/* EDITOR */
+.editor{max-width:900px;margin:0 auto;}
+.edhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:9px;}
+.edtitle{font-family:'Cinzel',serif;font-size:17px;color:var(--gold);}
+.edsearch{background:var(--bg2);border:1px solid var(--border);padding:7px 11px;border-radius:3px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;width:200px;}
+.edsearch:focus{border-color:var(--gold);}
+.edsearch::placeholder{color:var(--muted);}
+.edactions{display:flex;gap:6px;margin-bottom:13px;flex-wrap:wrap;}
+.savebtn{padding:8px 22px;background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(212,175,55,.07));border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.savebtn:hover{background:linear-gradient(135deg,rgba(212,175,55,.35),rgba(212,175,55,.14));box-shadow:0 0 14px rgba(212,175,55,.2);}
+.secbtn{padding:6px 13px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.secbtn:hover{border-color:var(--gold);color:var(--gold);}
+.etable{width:100%;border-collapse:collapse;font-size:13px;}
+.etable th{padding:8px 12px;text-align:left;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;}
+.etable td{padding:5px 12px;border-bottom:1px solid rgba(42,42,74,.5);vertical-align:middle;}
+.etable tr:hover td{background:rgba(212,175,55,.025);}
+.pinput{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;padding:4px 7px;border-radius:2px;width:85px;outline:none;}
+.pinput:focus{border-color:var(--gold);}
+.warn{background:rgba(255,68,68,.09);border:1px solid rgba(255,68,68,.35);border-radius:3px;padding:9px 14px;margin-bottom:13px;font-size:12px;color:#ff9999;letter-spacing:1px;}
+
+/* CHARTS */
+.chpage{max-width:1100px;margin:0 auto;}
+.chhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:9px;}
+.chtitle{font-family:'Cinzel',serif;font-size:17px;color:var(--gold);}
+.chsearch{background:var(--bg2);border:1px solid var(--border);padding:7px 11px;border-radius:3px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;width:250px;}
+.chsearch:focus{border-color:var(--gold);}
+.chsearch::placeholder{color:var(--muted);}
+.chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+.chcard{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:13px;}
+.chcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+.chcard-name{font-size:13px;font-weight:600;}
+.chcard-tier{font-size:10px;font-weight:700;padding:2px 6px;border-radius:2px;background:rgba(255,255,255,.05);}
+.chcard-price{font-size:11px;color:var(--muted);margin-top:2px;}
+.chcanvas{position:relative;height:100px;}
+
+/* PW MODAL */
+.pwbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+.pwbg.on{display:flex;}
+.pwbox{background:var(--bg2);border:1px solid var(--gold);border-radius:8px;padding:26px 30px;width:320px;text-align:center;animation:min .2s ease;}
+.pwbox h3{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);letter-spacing:3px;margin-bottom:5px;}
+.pwbox p{font-size:12px;color:var(--muted);margin-bottom:16px;letter-spacing:1px;}
+.pwinput{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;padding:8px 11px;border-radius:3px;outline:none;text-align:center;letter-spacing:4px;margin-bottom:10px;}
+.pwinput:focus{border-color:var(--gold);}
+.pwsub{width:100%;padding:9px;background:linear-gradient(135deg,rgba(212,175,55,.22),rgba(212,175,55,.07));border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;font-weight:700;letter-spacing:3px;cursor:pointer;margin-bottom:7px;}
+.pwsub:hover{background:linear-gradient(135deg,rgba(212,175,55,.38),rgba(212,175,55,.14));}
+.pwcan{background:none;border:none;color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:12px;cursor:pointer;letter-spacing:1px;}
+.pwerr{font-size:12px;color:var(--red);margin-top:6px;min-height:15px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--green);color:var(--green);padding:8px 16px;font-size:12px;font-weight:600;letter-spacing:1px;border-radius:3px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;}
+.toast.on{opacity:1;transform:translateY(0);}
+
+/* TIER COLORS */
+.cSS{color:var(--ss)}.cS{color:var(--s)}.cAp{color:var(--aplus)}.cA{color:var(--a)}.cAm{color:var(--aminus)}.cBp{color:var(--bplus)}.cB{color:var(--b)}
+.dSS{background:var(--ss)}.dS{background:var(--s)}.dAp{background:var(--aplus)}.dA{background:var(--a)}.dAm{background:var(--aminus)}.dBp{background:var(--bplus)}.dB{background:var(--b)}
+
+@media(max-width:680px){.arena{grid-template-columns:1fr}.tctr{flex-direction:row;justify-content:center}.hcontrols{position:static;transform:none;justify-content:center;margin-top:6px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚔ GPO TRADE SIMULATOR ⚔</div>
+  <div class="subtitle">Grand Piece Online · Value Calculator</div>
+  <div class="hcontrols">
+    <div class="sync-wrap"><div class="sdot loading" id="sdot"></div><span id="slabel">connecting...</span></div>
+    <button class="tbtn" id="tbtn" onclick="toggleTheme()">🌙</button>
+    <button class="abtn" id="abtn" onclick="openAdmin()">⚙ ADMIN</button>
+  </div>
+</header>
+
+<div class="nav">
+  <button class="ntab on" onclick="showPg('trade',this)">◆ Simulator</button>
+  <button class="ntab" onclick="showPg('prices',this)">◆ Edit Prices</button>
+  <button class="ntab" onclick="showPg('charts',this)">◆ Price History</button>
+</div>
+
+<!-- SIMULATOR -->
+<div class="pg on" id="pg-trade">
+  <div class="arena">
+    <div class="tpanel pmy">
+      <div class="tph">
+        <div class="ptitle">⚡ My Offer</div>
+        <div class="ptotal">Total: <span id="my-tot">0</span> MC</div>
+      </div>
+      <div class="pitems" id="my-items"><div class="empty" id="my-empty">No items added</div></div>
+      <div class="adda"><button class="addbtn" onclick="openModal('my')">+ ADD ITEM</button></div>
+    </div>
+    <div class="tctr">
+      <div class="vsbadge">VS</div>
+      <div class="vbox">
+        <div class="vlabel">Verdict</div>
+        <div class="vres" id="vres">—</div>
+        <div class="vdiff" id="vdiff">Add items</div>
+      </div>
+      <button class="rstbtn" onclick="resetTrade()">✕ RESET</button>
+    </div>
+    <div class="tpanel poth">
+      <div class="tph">
+        <div class="ptitle">🎯 Other Offer</div>
+        <div class="ptotal">Total: <span id="oth-tot">0</span> MC</div>
+      </div>
+      <div class="pitems" id="oth-items"><div class="empty" id="oth-empty">No items added</div></div>
+      <div class="adda"><button class="addbtn" onclick="openModal('other')">+ ADD ITEM</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PRICES -->
+<div class="pg" id="pg-prices">
+  <div class="editor">
+    <div class="edhead">
+      <div class="edtitle">⚙ Price Editor</div>
+      <input class="edsearch" type="text" placeholder="🔍 Search..." oninput="filterEd(this.value)">
+    </div>
+    <div class="warn" id="edwarn">🔒 ADMIN MODE REQUIRED — Click ADMIN button to unlock editing.</div>
+    <div class="edactions" id="edactions" style="display:none">
+      <button class="savebtn" onclick="savePrices()">💾 SAVE & SYNC</button>
+      <button class="secbtn" onclick="exportJSON()">↗ EXPORT JSON</button>
+      <button class="secbtn" onclick="document.getElementById('impfile').click()">↙ IMPORT JSON</button>
+      <input type="file" id="impfile" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+    <table class="etable">
+      <thead><tr><th>Tier</th><th>Sub</th><th>Item</th><th>Price (MC)</th></tr></thead>
+      <tbody id="edbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PRICE HISTORY -->
+<div class="pg" id="pg-charts">
+  <div class="chpage">
+    <div class="chhead">
+      <div class="chtitle">📈 Price History</div>
+      <input class="chsearch" type="text" id="chsearch" placeholder="🔍 Search item..." oninput="filterCharts(this.value)">
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:13px;letter-spacing:1px;">History is recorded automatically when admin saves prices. All players see the same data in real time.</div>
+    <div class="chgrid" id="chgrid"></div>
+  </div>
+</div>
+
+<!-- ITEM PICKER MODAL -->
+<div class="moverlay" id="moverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="mhead">
+      <div class="mtitle" id="mtitle">SELECT ITEM</div>
+      <button class="mclose" onclick="closeModal()">✕</button>
+    </div>
+    <div class="msearch"><input class="sinput" type="text" id="msearch" placeholder="🔍 Search item..." oninput="buildList(this.value)"></div>
+    <div class="tfilters">
+      <button class="tfbtn on" data-t="ALL" onclick="setTierFilter('ALL',this)">ALL</button>
+      <button class="tfbtn" data-t="SS" onclick="setTierFilter('SS',this)">SS</button>
+      <button class="tfbtn" data-t="S" onclick="setTierFilter('S',this)">S</button>
+      <button class="tfbtn" data-t="A+" onclick="setTierFilter('A+',this)">A+</button>
+      <button class="tfbtn" data-t="A" onclick="setTierFilter('A',this)">A</button>
+      <button class="tfbtn" data-t="A-" onclick="setTierFilter('A-',this)">A−</button>
+      <button class="tfbtn" data-t="B+" onclick="setTierFilter('B+',this)">B+</button>
+      <button class="tfbtn" data-t="B" onclick="setTierFilter('B',this)">B</button>
+    </div>
+    <div class="mlist" id="mlist"></div>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="pwbg" id="pwbg">
+  <div class="pwbox">
+    <h3>⚔ ADMIN ACCESS</h3>
+    <p>Enter admin password to unlock price editing</p>
+    <input class="pwinput" type="password" id="pwinput" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="pwsub" onclick="checkPw()">UNLOCK</button>
+    <button class="pwcan" onclick="closePw()">Cancel</button>
+    <div class="pwerr" id="pwerr"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// SUPABASE
+// ============================================================
+var SB = "https://tmhnjcupmovftioxniyo.supabase.co";
+var SK = "sb_publishable_j0zgait3-YpDwoqcaqxmXQ_ktbjfgmj";
+
+function sbHeaders() {
+  return { 'apikey': SK, 'Authorization': 'Bearer ' + SK, 'Content-Type': 'application/json' };
+}
+async function sbGet(path) {
+  var r = await fetch(SB + path, { headers: sbHeaders() });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPost(path, body) {
+  var r = await fetch(SB + path, {
+    method: 'POST',
+    headers: Object.assign({}, sbHeaders(), { 'Prefer': 'resolution=merge-duplicates' }),
+    body: JSON.stringify(body)
+  });
+  if (r.status !== 201 && r.status !== 204 && !r.ok) throw new Error(await r.text());
+}
+
+function setSync(s, t) {
+  var d = document.getElementById('sdot'), l = document.getElementById('slabel');
+  if (d) d.className = 'sdot ' + s;
+  if (l) l.textContent = t;
+}
+
+// ============================================================
+// ITEMS DATABASE
+// ============================================================
+var DB = [
+  {tier:"SS",sub:"High",name:"Sakamoto Glasses",price:null},
+  {tier:"SS",sub:"High",name:"Prestige Candy Cane",price:null},
+  {tier:"SS",sub:"High",name:"Prestige Cupid's Chakram",price:null},
+  {tier:"SS",sub:"Mid",name:"Prestige World Ender",price:null},
+  {tier:"SS",sub:"Mid",name:"Prestige Firework Lancer",price:null},
+  {tier:"SS",sub:"Mid",name:"Prestige Inferno Rocket Blade",price:null},
+  {tier:"S",sub:"High",name:"Iceborn Candy Cane",price:null},
+  {tier:"S",sub:"High",name:"Cupid Queen's Maid Outfit",price:null},
+  {tier:"S",sub:"High",name:"Prestige Fruitbag",price:null},
+  {tier:"S",sub:"High",name:"Chromatic All Seeing Eye",price:null},
+  {tier:"S",sub:"High",name:"Anomalized Mega-Pow",price:null},
+  {tier:"S",sub:"High",name:"Candy Cane",price:null},
+  {tier:"S",sub:"High",name:"Prestige Firework Daggers",price:null},
+  {tier:"S",sub:"Mid",name:"Dominus Ultimus",price:null},
+  {tier:"S",sub:"Mid",name:"Jester's Outfit",price:null},
+  {tier:"S",sub:"Mid",name:"All Seeing Shamrock",price:null},
+  {tier:"S",sub:"Low",name:"Titan Shifters Aura",price:null},
+  {tier:"S",sub:"Low",name:"Prestige Firework Rocket Launcher",price:null},
+  {tier:"S",sub:"Low",name:"Leo's Inferno Hagoromo",price:null},
+  {tier:"S",sub:"Low",name:"All Seeing Egg",price:null},
+  {tier:"S",sub:"Low",name:"Blessed Exalted Cupid Queen's Wings",price:null},
+  {tier:"S",sub:"Low",name:"All Seeing Ba'al",price:null},
+  {tier:"S",sub:"Low",name:"Yukio The Bunny",price:null},
+  {tier:"S",sub:"Low",name:"All Seeing Holly",price:null},
+  {tier:"S",sub:"Low",name:"Cupid's All Seeing Eye",price:null},
+  {tier:"A+",sub:"High",name:"All Seeing Eye",price:null},
+  {tier:"A+",sub:"High",name:"Soul King's Scarf",price:null},
+  {tier:"A+",sub:"High",name:"Bunyo The Bunny",price:null},
+  {tier:"A+",sub:"Mid",name:"Flower Bouquet",price:null},
+  {tier:"A+",sub:"Mid",name:"World Ender",price:null},
+  {tier:"A+",sub:"Mid",name:"Blessed Cupid Queen's Scarf",price:null},
+  {tier:"A+",sub:"Low",name:"Dragon",price:null},
+  {tier:"A+",sub:"Low",name:"Snowcap Scepter",price:null},
+  {tier:"A+",sub:"Low",name:"Inverted Spear Of Heaven",price:null},
+  {tier:"A+",sub:"Low",name:"Soul Cleaver",price:null},
+  {tier:"A",sub:"High",name:"Troll Face",price:null},
+  {tier:"A",sub:"High",name:"Time-Rift Capsule",price:null},
+  {tier:"A",sub:"High",name:"Blessed Cupid's Bow",price:null},
+  {tier:"A",sub:"High",name:"Sickle of Sorrow",price:null},
+  {tier:"A",sub:"High",name:"Epic Banana",price:null},
+  {tier:"A",sub:"High",name:"Hollow's World Ender",price:null},
+  {tier:"A",sub:"High",name:"Coyote Outfit",price:null},
+  {tier:"A",sub:"High",name:"Devil Fruit Rod",price:null},
+  {tier:"A",sub:"High",name:"Resurrected Ba'al's Head",price:null},
+  {tier:"A",sub:"Mid",name:"Dark Blade",price:null},
+  {tier:"A",sub:"Mid",name:"Kikoku",price:null},
+  {tier:"A",sub:"Mid",name:"Nightfall Shroud",price:null},
+  {tier:"A",sub:"Mid",name:"Stark Guns",price:null},
+  {tier:"A",sub:"Low",name:"Dark Skeletal Shark Mask",price:null},
+  {tier:"A",sub:"Low",name:"Santa's Hat",price:null},
+  {tier:"A",sub:"Low",name:"Flamingo Boat",price:null},
+  {tier:"A",sub:"Low",name:"Mythical Fruit Chest",price:1},
+  {tier:"A",sub:"Low",name:"Exalted Cupid Queen's Wings",price:null},
+  {tier:"A",sub:"Low",name:"Flower Sword",price:null},
+  {tier:"A",sub:"Low",name:"Hover Pod",price:null},
+  {tier:"A-",sub:"High",name:"Mega-Pow",price:null},
+  {tier:"A-",sub:"High",name:"Blessed Exalted Cupid Queen Outfit",price:null},
+  {tier:"A-",sub:"High",name:"Inferno Rocket Blade",price:null},
+  {tier:"A-",sub:"High",name:"Firework Lancer",price:null},
+  {tier:"A-",sub:"High",name:"Head of Ba'al",price:null},
+  {tier:"A-",sub:"Mid",name:"Hopiyo The Bunny",price:null},
+  {tier:"A-",sub:"Mid",name:"Supreme Giftbox Crown",price:null},
+  {tier:"A-",sub:"Mid",name:"Mochi",price:null},
+  {tier:"A-",sub:"Mid",name:"Soul",price:null},
+  {tier:"A-",sub:"Mid",name:"Soul King's Guitar",price:null},
+  {tier:"A-",sub:"Mid",name:"Venom",price:null},
+  {tier:"A-",sub:"Mid",name:"Snoozy Neko",price:null},
+  {tier:"A-",sub:"Mid",name:"Pteranodon",price:null},
+  {tier:"A-",sub:"Mid",name:"Nightfall Half Shroud",price:null},
+  {tier:"A-",sub:"Low",name:"Cupid Queen's Wings",price:null},
+  {tier:"A-",sub:"Low",name:"Cupid Queen's Outfit",price:null},
+  {tier:"A-",sub:"Low",name:"ODM Rod",price:null},
+  {tier:"A-",sub:"Low",name:"Legendary Fish Bait (300x)",price:null},
+  {tier:"A-",sub:"Low",name:"Tori",price:null},
+  {tier:"A-",sub:"Low",name:"Elo's Sledgehammer",price:null},
+  {tier:"A-",sub:"Low",name:"Blo's Crimson Sledgehammer",price:null},
+  {tier:"B+",sub:"High",name:"Kraken Armor Set (Azure)",price:null},
+  {tier:"B+",sub:"High",name:"Kraken Blade (Azure)",price:null},
+  {tier:"B+",sub:"High",name:"Anniversary Lantern",price:null},
+  {tier:"B+",sub:"High",name:"Cupid Queen's Scarf",price:null},
+  {tier:"B+",sub:"High",name:"Hollow's Fang",price:null},
+  {tier:"B+",sub:"High",name:"Blo's Sledgehammer",price:null},
+  {tier:"B+",sub:"High",name:"Demon Jester's Scythe",price:null},
+  {tier:"B+",sub:"High",name:"Exalted Cupid Queen Outfit",price:null},
+  {tier:"B+",sub:"High",name:"True Ba'al's Guard",price:null},
+  {tier:"B+",sub:"High",name:"Pika",price:null},
+  {tier:"B+",sub:"High",name:"Festival Shield",price:null},
+  {tier:"B+",sub:"High",name:"Ope",price:null},
+  {tier:"B+",sub:"Mid",name:"Roger's Ace",price:null},
+  {tier:"B+",sub:"Mid",name:"Buddha",price:null},
+  {tier:"B+",sub:"Mid",name:"Bat Swarm",price:null},
+  {tier:"B+",sub:"Mid",name:"Firework Daggers",price:null},
+  {tier:"B+",sub:"Mid",name:"Mochi Trident",price:null},
+  {tier:"B+",sub:"Mid",name:"Mochi Emperor's Scarf",price:null},
+  {tier:"B+",sub:"Mid",name:"Jester's Hat",price:null},
+  {tier:"B",sub:"Low",name:"Virtuous Cupid Queen's Wings",price:null},
+  {tier:"B",sub:"Low",name:"Cupid's Chakram",price:null},
+  {tier:"B",sub:"Low",name:"Radiant Shades",price:null},
+  {tier:"B",sub:"Low",name:"Big Mama's Cape",price:null},
+  {tier:"B",sub:"Low",name:"Big Mama's Outfit (Male)",price:null},
+  {tier:"B",sub:"Low",name:"Legendary Fruit Chest",price:null},
+  {tier:"B",sub:"Low",name:"Big Mama's Hat",price:null},
+  {tier:"B",sub:"Low",name:"Roger's Outfit",price:null},
+  {tier:"B",sub:"Low",name:"Rocky Shoulder Pet",price:null},
+  {tier:"B",sub:"Low",name:"Ito",price:null},
+  {tier:"B",sub:"Low",name:"Cupid's Wand",price:null},
+  {tier:"B",sub:"Low",name:"1mi Beli Bag",price:null},
+  {tier:"B",sub:"Low",name:"Lovestruck Rod",price:null},
+  {tier:"B",sub:"Low",name:"Jester Box",price:null},
+  {tier:"B",sub:"Low",name:"Sunken Helmet",price:null},
+  {tier:"B",sub:"Low",name:"Gura",price:null},
+  {tier:"B",sub:"Low",name:"Magu",price:null},
+  {tier:"B",sub:"Low",name:"Devil Fruit Journal",price:null},
+  {tier:"B",sub:"Low",name:"Goro",price:null},
+  {tier:"B",sub:"Low",name:"Suna",price:null},
+  {tier:"B",sub:"High",name:"Sea Serpent's Core & Kraken Core",price:null},
+  {tier:"B",sub:"High",name:"Helix Skewer",price:null},
+  {tier:"B",sub:"High",name:"Soul Cane",price:null},
+  {tier:"B",sub:"High",name:"Ryuma's Scarf",price:null},
+  {tier:"B",sub:"High",name:"Cupid's Bow",price:null},
+  {tier:"B",sub:"High",name:"Cupid's Headband",price:null},
+  {tier:"B",sub:"Mid",name:"Endbringer Wings",price:null},
+  {tier:"B",sub:"Mid",name:"Swordfish Rapier",price:null},
+  {tier:"B",sub:"Mid",name:"Endbringer Armor",price:null}
+];
+
+var TC = {"SS":"cSS","S":"cS","A+":"cAp","A":"cA","A-":"cAm","B+":"cBp","B":"cB"};
+var TD = {"SS":"dSS","S":"dS","A+":"dAp","A":"dA","A-":"dAm","B+":"dBp","B":"dB"};
+
+// ============================================================
+// STATE
+// ============================================================
+var myItems = [], othItems = [], curSide = 'my', curTier = 'ALL';
+var isAdmin = false;
+var PW = btoa("GPOAdmin2024");
+var charts = {};
+
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+  document.body.classList.toggle('light');
+  var isL = document.body.classList.contains('light');
+  document.getElementById('tbtn').textContent = isL ? '☀️' : '🌙';
+  localStorage.setItem('gpo_theme', isL ? 'light' : 'dark');
+  renderCharts(document.getElementById('chsearch').value);
+}
+(function(){
+  if (localStorage.getItem('gpo_theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('tbtn').textContent = '☀️';
+  }
+})();
+
+// ============================================================
+// ADMIN / PASSWORD
+// ============================================================
+function openAdmin() {
+  if (isAdmin) { logoutAdmin(); return; }
+  document.getElementById('pwerr').textContent = '';
+  document.getElementById('pwinput').value = '';
+  document.getElementById('pwbg').classList.add('on');
+  setTimeout(function(){ document.getElementById('pwinput').focus(); }, 100);
+}
+function closePw() { document.getElementById('pwbg').classList.remove('on'); }
+function checkPw() {
+  var v = document.getElementById('pwinput').value;
+  if (btoa(v) === PW) {
+    isAdmin = true; closePw();
+    document.getElementById('abtn').classList.add('on');
+    document.getElementById('abtn').textContent = '⚙ ADMIN ✓';
+    document.getElementById('edactions').style.display = 'flex';
+    document.getElementById('edwarn').style.display = 'none';
+    buildEditor('');
+    toast('✓ Admin mode unlocked!');
+  } else {
+    document.getElementById('pwerr').textContent = 'Wrong password.';
+    document.getElementById('pwinput').value = '';
+    document.getElementById('pwinput').focus();
+  }
+}
+function logoutAdmin() {
+  isAdmin = false;
+  document.getElementById('abtn').classList.remove('on');
+  document.getElementById('abtn').textContent = '⚙ ADMIN';
+  document.getElementById('edactions').style.display = 'none';
+  document.getElementById('edwarn').style.display = 'block';
+  buildEditor('');
+  toast('Admin mode disabled.');
+}
+
+// ============================================================
+// LOAD PRICES FROM SUPABASE
+// ============================================================
+async function loadPrices() {
+  setSync('loading', 'syncing...');
+  try {
+    var data = await sbGet('/rest/v1/item_prices?select=item_key,price');
+    if (data && data.length) {
+      var map = {};
+      data.forEach(function(r){ map[r.item_key] = r.price; });
+      DB.forEach(function(it){
+        var k = it.tier + '|' + it.name;
+        if (map[k] !== undefined) it.price = map[k];
+      });
+    }
+    setSync('ok', 'synced ✓');
+    updateTrade(); buildEditor('');
+  } catch(e) {
+    setSync('err', 'offline');
+    var sv = localStorage.getItem('gpo_prices');
+    if (sv) {
+      var map = JSON.parse(sv);
+      DB.forEach(function(it){
+        var k = it.tier + '|' + it.name;
+        if (map[k] !== undefined) it.price = map[k];
+      });
+    }
+    buildEditor('');
+  }
+}
+
+// ============================================================
+// SAVE PRICES
+// ============================================================
+async function savePrices() {
+  if (!isAdmin) { toast('Admin required!'); return; }
+  var inputs = document.querySelectorAll('.pinput');
+  var map = {}, rows = [], hist = [], now = new Date().toISOString();
+  inputs.forEach(function(inp){
+    var k = inp.dataset.k;
+    var v = inp.value === '' ? null : parseFloat(inp.value);
+    map[k] = isNaN(v) ? null : v;
+  });
+  DB.forEach(function(it){
+    var k = it.tier + '|' + it.name;
+    var np = map[k];
+    rows.push({ item_key: k, price: np, updated_at: now });
+    if (np !== null && np !== it.price) {
+      hist.push({ item_key: k, price: np, recorded_at: now });
+    }
+    if (map[k] !== undefined) it.price = map[k];
+  });
+  localStorage.setItem('gpo_prices', JSON.stringify(map));
+  setSync('loading', 'saving...');
+  try {
+    await sbPost('/rest/v1/item_prices', rows);
+    if (hist.length) await sbPost('/rest/v1/price_history', hist);
+    setSync('ok', 'synced ✓');
+    toast('✓ Saved & synced for everyone!');
+  } catch(e) {
+    setSync('err', 'sync failed');
+    toast('⚠ Saved locally only');
+    console.error(e);
+  }
+  updateTrade();
+}
+
+function exportJSON() {
+  var map = {};
+  DB.forEach(function(it){ map[it.tier+'|'+it.name] = it.price; });
+  var b = new Blob([JSON.stringify(map,null,2)],{type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(b);
+  a.download = 'gpo_prices.json'; a.click();
+}
+function importJSON(e) {
+  var f = e.target.files[0]; if (!f) return;
+  var r = new FileReader();
+  r.onload = function(ev){
+    try {
+      var map = JSON.parse(ev.target.result);
+      DB.forEach(function(it){
+        var k = it.tier+'|'+it.name;
+        if (map[k] !== undefined) it.price = map[k];
+      });
+      buildEditor(''); updateTrade(); toast('✓ Imported! Click Save to sync.');
+    } catch(err){ alert('Invalid JSON'); }
+  };
+  r.readAsText(f); e.target.value = '';
+}
+
+// ============================================================
+// TRADE LOGIC
+// ============================================================
+function getVal(item) {
+  var it = DB.find(function(x){ return x.name === item.name; });
+  return (it && it.price !== null) ? it.price * item.qty : null;
+}
+function calcTotal(list) {
+  var t = 0, unk = false;
+  list.forEach(function(it){ var v = getVal(it); if (v === null) unk = true; else t += v; });
+  return { t: t, unk: unk };
+}
+function updateTrade() {
+  var my = calcTotal(myItems), oth = calcTotal(othItems);
+  document.getElementById('my-tot').textContent = my.unk ? my.t + '+?' : my.t.toFixed(1);
+  document.getElementById('oth-tot').textContent = oth.unk ? oth.t + '+?' : oth.t.toFixed(1);
+  var vr = document.getElementById('vres'), vd = document.getElementById('vdiff');
+  if (!myItems.length && !othItems.length) { vr.textContent='—'; vr.className='vres'; vd.textContent='Add items'; return; }
+  if (my.unk || oth.unk) { vr.textContent='?'; vr.className='vres'; vd.textContent='Unknown prices'; return; }
+  var diff = oth.t - my.t, abs = Math.abs(diff).toFixed(1);
+  if (diff > 0.05) { vr.textContent='✓ PROFIT'; vr.className='vres win'; vd.textContent='+'+abs+' MC'; }
+  else if (diff < -0.05) { vr.textContent='✗ LOSS'; vr.className='vres lose'; vd.textContent='−'+abs+' MC'; }
+  else { vr.textContent='= EVEN'; vr.className='vres even'; vd.textContent='Fair trade'; }
+}
+function renderSide(side) {
+  var list = side === 'my' ? myItems : othItems;
+  var con = document.getElementById(side === 'my' ? 'my-items' : 'oth-items');
+  var emp = document.getElementById(side === 'my' ? 'my-empty' : 'oth-empty');
+  con.querySelectorAll('.chip').forEach(function(c){ c.remove(); });
+  emp.style.display = list.length ? 'none' : '';
+  list.forEach(function(item, i){
+    var it = DB.find(function(x){ return x.name === item.name; });
+    var val = (it && it.price !== null) ? (it.price * item.qty).toFixed(1) + ' MC' : '? MC';
+    var chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = '<div class="tdot '+(TD[item.tier]||'')+'"></div>'
+      + '<span class="cname">'+item.name+'</span>'
+      + '<div class="qwrap">'
+      + '<button class="qb" onclick="chQty(\''+side+'\','+i+',-1)">−</button>'
+      + '<span class="qn">'+item.qty+'</span>'
+      + '<button class="qb" onclick="chQty(\''+side+'\','+i+',1)">+</button>'
+      + '</div>'
+      + '<span class="cval">'+val+'</span>'
+      + '<button class="rmv" onclick="rmItem(\''+side+'\','+i+')">✕</button>';
+    con.appendChild(chip);
+  });
+  updateTrade();
+}
+function chQty(s,i,d){ var l=s==='my'?myItems:othItems; l[i].qty=Math.max(1,l[i].qty+d); renderSide(s); }
+function rmItem(s,i){ var l=s==='my'?myItems:othItems; l.splice(i,1); renderSide(s); }
+function resetTrade(){ myItems=[]; othItems=[]; renderSide('my'); renderSide('other'); }
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(side) {
+  curSide = side;
+  document.getElementById('mtitle').textContent = side==='my' ? '◆ ADD TO MY OFFER' : '◆ ADD TO OTHER OFFER';
+  document.getElementById('msearch').value = '';
+  curTier = 'ALL';
+  document.querySelectorAll('.tfbtn').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelector('.tfbtn[data-t="ALL"]').classList.add('on');
+  buildList('');
+  document.getElementById('moverlay').classList.add('on');
+  document.getElementById('msearch').focus();
+}
+function closeModal(){ document.getElementById('moverlay').classList.remove('on'); }
+function setTierFilter(t, btn) {
+  curTier = t;
+  document.querySelectorAll('.tfbtn').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  buildList(document.getElementById('msearch').value);
+}
+function buildList(q) {
+  var con = document.getElementById('mlist'); con.innerHTML = '';
+  q = q.toLowerCase().trim();
+  ['SS','S','A+','A','A-','B+','B'].forEach(function(tier){
+    if (curTier !== 'ALL' && curTier !== tier) return;
+    var items = DB.filter(function(it){ return it.tier===tier && (q===''||it.name.toLowerCase().includes(q)); });
+    if (!items.length) return;
+    var gh = document.createElement('div'); gh.className = 'tgh ' + (TC[tier]||''); gh.textContent = 'Tier ' + tier;
+    con.appendChild(gh);
+    items.forEach(function(it){
+      var row = document.createElement('div'); row.className = 'irow';
+      var pt = it.price !== null ? it.price.toFixed(1)+' MC' : 'No price';
+      row.innerHTML = '<span class="itier '+(TC[tier]||'')+'">'+tier+'</span>'
+        + '<span class="iname">'+it.name+'</span>'
+        + '<span class="isub">'+it.sub+'</span>'
+        + '<span class="iprice'+(it.price===null?' unk':'')+'">'+pt+'</span>';
+      row.onclick = function(){ addItem(it); };
+      con.appendChild(row);
+    });
+  });
+  if (!con.children.length) con.innerHTML = '<div class="empty">No items found</div>';
+}
+function addItem(it) {
+  var list = curSide === 'my' ? myItems : othItems;
+  var ex = list.find(function(x){ return x.name === it.name; });
+  if (ex) ex.qty++; else list.push({ name: it.name, tier: it.tier, qty: 1 });
+  renderSide(curSide); closeModal();
+}
+
+// ============================================================
+// EDITOR
+// ============================================================
+function buildEditor(q) {
+  var tbody = document.getElementById('edbody'); tbody.innerHTML = '';
+  q = q.toLowerCase().trim();
+  DB.forEach(function(it){
+    if (q && !it.name.toLowerCase().includes(q)) return;
+    var k = it.tier + '|' + it.name;
+    var tr = document.createElement('tr');
+    var cell = isAdmin
+      ? '<input class="pinput" type="number" min="0" step="0.5" data-k="'+k+'" value="'+(it.price!==null?it.price:'')+'" placeholder="?">'
+      : '<span style="color:var(--gold);font-weight:600">'+(it.price!==null?it.price+' MC':'—')+'</span>';
+    tr.innerHTML = '<td class="'+(TC[it.tier]||'')+'" style="font-weight:700">'+it.tier+'</td>'
+      + '<td style="color:var(--muted);font-size:11px">'+it.sub+'</td>'
+      + '<td>'+it.name+'</td><td>'+cell+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+function filterEd(q){ buildEditor(q); }
+
+// ============================================================
+// CHARTS
+// ============================================================
+async function renderCharts(q) {
+  var grid = document.getElementById('chgrid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--muted);font-size:12px;letter-spacing:2px;">Loading...</div>';
+  var hist = {};
+  try {
+    var data = await sbGet('/rest/v1/price_history?select=item_key,price,recorded_at&order=recorded_at.asc&limit=5000');
+    if (data) {
+      data.forEach(function(row){
+        if (!hist[row.item_key]) hist[row.item_key] = [];
+        var d = new Date(row.recorded_at);
+        hist[row.item_key].push({ date: d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}), price: row.price });
+      });
+    }
+  } catch(e) { console.error(e); }
+  Object.values(charts).forEach(function(c){ try{ c.destroy(); }catch(e){} });
+  charts = {};
+  grid.innerHTML = '';
+  q = (q||'').toLowerCase().trim();
+  var isL = document.body.classList.contains('light');
+  var gc = isL ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.07)';
+  var tc = isL ? '#5a5a80' : '#7070a0';
+  var shown = DB.filter(function(it){
+    if (q && !it.name.toLowerCase().includes(q)) return false;
+    var k = it.tier+'|'+it.name;
+    return hist[k] && hist[k].length > 0;
+  });
+  if (!shown.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:13px;letter-spacing:2px;">'+(q?'No history for this item.':'No history yet. Save prices in Edit Prices to start.')+'</div>';
+    return;
+  }
+  shown.forEach(function(it){
+    var k = it.tier+'|'+it.name;
+    var pts = hist[k];
+    var latest = pts[pts.length-1].price;
+    var diff = (latest - pts[0].price).toFixed(1);
+    var dc = diff > 0 ? '#00e676' : diff < 0 ? '#ff4444' : '#7070a0';
+    var ds = diff > 0 ? '+'+diff : ''+diff;
+    var card = document.createElement('div'); card.className = 'chcard';
+    var cid = 'cv_'+k.replace(/[^a-zA-Z0-9]/g,'_');
+    card.innerHTML = '<div class="chcard-top"><div><div class="chcard-name">'+it.name+'</div><div class="chcard-price">'+latest+' MC <span style="color:'+dc+';font-size:11px">('+ds+' MC)</span></div></div><span class="chcard-tier '+(TC[it.tier]||'')+'">'+it.tier+' · '+it.sub+'</span></div><div class="chcanvas"><canvas id="'+cid+'"></canvas></div>';
+    grid.appendChild(card);
+    var ctx = document.getElementById(cid).getContext('2d');
+    charts[k] = new Chart(ctx,{
+      type:'line',
+      data:{ labels:pts.map(function(p){return p.date;}), datasets:[{ data:pts.map(function(p){return p.price;}), borderColor:'#D4AF37', backgroundColor:'rgba(212,175,55,.08)', borderWidth:2, pointBackgroundColor:'#D4AF37', pointRadius:4, pointHoverRadius:6, tension:.35, fill:true }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:function(c){return c.parsed.y+' MC';}}} }, scales:{ x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}, y:{ticks:{color:tc,font:{size:10},callback:function(v){return v+' MC';}},grid:{color:gc},beginAtZero:false} } }
+    });
+  });
+}
+function filterCharts(q){ renderCharts(q); }
+
+// ============================================================
+// NAV
+// ============================================================
+function showPg(id, btn) {
+  document.querySelectorAll('.pg').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.ntab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById('pg-'+id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  if (id === 'charts') renderCharts(document.getElementById('chsearch').value);
+  if (id === 'prices') {
+    document.getElementById('edwarn').style.display = isAdmin ? 'none' : 'block';
+    document.getElementById('edactions').style.display = isAdmin ? 'flex' : 'none';
+  }
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, 2800);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadPrices();
+buildEditor('');
+renderSide('my');
+renderSide('other');
+</script>
+</body>
+</html>
